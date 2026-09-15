@@ -3,7 +3,7 @@ import unittest
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-from assertion_engine import (
+from promptlab.assertion_engine import (
     assert_contains, assert_not_contains, assert_equals, assert_matches,
     assert_json_valid, assert_json_field_equals, assert_max_tokens,
     assert_finish_is, assert_all_of, assert_any_of, assert_json_subset,

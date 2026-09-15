@@ -4,9 +4,9 @@ import time
 import sys
 import os
 from typing import Dict, List, Tuple, Any, Optional
-from .model_invoker import invoke_model
-from .assertion_engine import _dispatch_assertion
-from .suite_parser import load_suite
+from  promptlab.model_invoker import invoke_model
+from promptlab.assertion_engine import _dispatch_assertion
+from promptlab.suite_parser import load_suite
 
 def run_suite(
     suite: Dict[str, Any],

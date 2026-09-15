@@ -1,0 +1,39 @@
+{
+  "name": "classify-smoke-v2",
+  "prompt_file": "prompts/classify_v2.txt",
+  "model": {
+    "temperature": 0.0,
+    "max_tokens": 256
+  },
+  "runs": 3,
+  "cases": [
+    {
+      "id": "c001",
+      "input": "I was charged twice for invoice 7",
+      "assert": [
+        { "type": "json_valid" },
+        { "type": "json_field_equals", "field": "category", "value": "billing" },
+        { "type": "not_contains", "value": "Sure" },
+        { "type": "max_tokens", "value": 40 },
+        { "type": "finish_is", "value": "stop" }
+      ]
+    },
+    {
+      "id": "c002",
+      "input": "The application crashes whenever I click submit button",
+      "assert": [
+        { "type": "json_valid" },
+        { "type": "json_field_equals", "field": "category", "value": "technical" },
+        { "type": "finish_is", "value": "stop" }
+      ]
+    },
+    {
+      "id": "c003",
+      "input": "I need help with something",
+      "assert": [
+        { "type": "json_valid" },
+        { "type": "json_field_equals", "field": "category", "value": "unclear" }
+      ]
+    }
+  ]
+}

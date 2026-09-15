@@ -5,7 +5,7 @@ import os
 import tempfile
 import json
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-from suite_parser import load_suite
+from promptlab.suite_parser import load_suite
 
 class TestSuiteParser(unittest.TestCase):
     def setUp(self):

@@ -6,7 +6,10 @@ import argparse
 import json
 import sys
 import os
-from . import doctor, test_runner, reporter, comparator
+from promptlab import doctor
+from promptlab import test_runner
+from promptlab import reporter
+from promptlab import comparator
 
 def _handle_run(args):
     """Handle promptlab run command."""

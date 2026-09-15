@@ -1,0 +1,21 @@
+{
+  "name": "example-suite",
+  "prompt_file": "prompt.txt",
+  "model": {
+    "temperature": 0.0,
+    "max_tokens": 256
+  },
+  "runs": 1,
+  "cases": [
+    {
+      "id": "case1",
+      "input": "Say hello",
+      "assert": [
+        {
+          "type": "contains",
+          "value": "hello"
+        }
+      ]
+    }
+  ]
+}

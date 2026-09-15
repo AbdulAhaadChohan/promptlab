@@ -1,0 +1,9 @@
+Baseline hash: 6a39ba75cd6c
+Candidate hash: 6a39ba75cd6c
+Pass rate change: +0.00
+Tokens in change: +0.00%
+Tokens out change: +0.00%
+Wall time change: +0.00%
+Regressions: 0
+Improvements: 0
+Unchanged: 1

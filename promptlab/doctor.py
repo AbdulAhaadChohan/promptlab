@@ -62,7 +62,7 @@ def doctor() -> int:
     try:
         # Add src to path if needed
         sys.path.insert(0, os.path.dirname(__file__))
-        from .assertion_engine import _ASSERTION_FUNCS
+        from assertion_engine import _ASSERTION_FUNCS
         expected_types = {"contains", "not_contains", "equals", "matches", "json_valid", "json_field_equals", "max_tokens", "finish_is", "all_of", "any_of", "json_subset"}
         missing = expected_types - set(_ASSERTION_FUNCS.keys())
         if not missing:
@@ -74,21 +74,21 @@ def doctor() -> int:
 
     # 5. Test runner import
     try:
-        from .test_runner import run_suite
+        from test_runner import run_suite
         checks.append(("Test runner importable", True, ""))
     except Exception as e:
         checks.append(("Test runner importable", False, str(e)))
 
     # 6. Reporter import
     try:
-        from .reporter import generate_json_report, generate_human_report
+        from reporter import generate_json_report, generate_human_report
         checks.append(("Reporter importable", True, ""))
     except Exception as e:
         checks.append(("Reporter importable", False, str(e)))
 
     # 7. Comparator import
     try:
-        from .comparator import load_report, compare_reports
+        from comparator import load_report, compare_reports
         checks.append(("Comparator importable", True, ""))
     except Exception as e:
         checks.append(("Comparator importable", False, str(e)))

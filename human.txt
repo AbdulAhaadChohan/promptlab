@@ -1,0 +1,7 @@
+Suite: example-suite
+Passed: 1/1 (100.0%)
+Flaky: 0/1 (0.0%)
+Failed: 0/1 (0.0%)
+Tokens In: 13 | Tokens Out: 2 | Wall Time: 0.20s
+Worst Cases:
+  case1: pass_rate=1.00 (assertions: contains)
