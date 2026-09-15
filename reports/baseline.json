@@ -14,7 +14,7 @@
     "flaky": 0,
     "tokens_in": 90,
     "tokens_out": 18,
-    "wall_ms": 1860
+    "wall_ms": 2600
   },
   "cases": [
     {
@@ -32,21 +32,6 @@
           "type": "json_field_equals",
           "passed": 0,
           "failed": 3
-        },
-        {
-          "type": "not_contains",
-          "passed": 3,
-          "failed": 0
-        },
-        {
-          "type": "max_tokens",
-          "passed": 3,
-          "failed": 0
-        },
-        {
-          "type": "finish_is",
-          "passed": 3,
-          "failed": 0
         }
       ],
       "failures": [
@@ -76,11 +61,6 @@
           "type": "json_field_equals",
           "passed": 0,
           "failed": 3
-        },
-        {
-          "type": "finish_is",
-          "passed": 3,
-          "failed": 0
         }
       ],
       "failures": [

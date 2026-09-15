@@ -1,7 +1,7 @@
 {
-  "suite": "classify-smoke-v2",
-  "prompt_file": "D:\\AI_AGENT\\promptlab\\suites\\prompts/classify_v2.txt",
-  "prompt_hash": "b8421431894d",
+  "suite": "classify-smoke",
+  "prompt_file": "D:\\AI_AGENT\\promptlab\\suites\\prompts/classify_v1.txt",
+  "prompt_hash": "33bb8a4e364b",
   "runs": 3,
   "model": {
     "temperature": 0.0,
@@ -12,9 +12,9 @@
     "passed": 0,
     "failed": 3,
     "flaky": 0,
-    "tokens_in": 1161,
+    "tokens_in": 90,
     "tokens_out": 18,
-    "wall_ms": 2240
+    "wall_ms": 2365
   },
   "cases": [
     {
@@ -32,21 +32,6 @@
           "type": "json_field_equals",
           "passed": 0,
           "failed": 3
-        },
-        {
-          "type": "not_contains",
-          "passed": 3,
-          "failed": 0
-        },
-        {
-          "type": "max_tokens",
-          "passed": 3,
-          "failed": 0
-        },
-        {
-          "type": "finish_is",
-          "passed": 3,
-          "failed": 0
         }
       ],
       "failures": [
@@ -76,11 +61,6 @@
           "type": "json_field_equals",
           "passed": 0,
           "failed": 3
-        },
-        {
-          "type": "finish_is",
-          "passed": 3,
-          "failed": 0
         }
       ],
       "failures": [

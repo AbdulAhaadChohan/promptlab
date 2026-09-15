@@ -1,0 +1,17 @@
+{
+  "baseline_hash": "33bb8a4e364b",
+  "candidate_hash": "33bb8a4e364b",
+  "delta": {
+    "pass_rate_change": 0.0,
+    "tokens_in_change_pct": 0.0,
+    "tokens_out_change_pct": 0.0,
+    "wall_ms_change_pct": -9.038461538461538
+  },
+  "regressions": [],
+  "improvements": [],
+  "unchanged": [
+    "c001",
+    "c002",
+    "c003"
+  ]
+}
