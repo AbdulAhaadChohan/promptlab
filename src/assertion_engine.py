@@ -1,6 +1,7 @@
 """Assertion engine with pure function implementations."""
 import json
 import re
+import sys
 from typing import Any, Dict, Tuple, List, Optional
 
 # Type alias for assertion result
@@ -65,21 +66,33 @@ def assert_matches(output: Dict[str, Any], config: Dict[str, Any]) -> AssertionR
 
 def assert_json_valid(output: Dict[str, Any], config: Dict[str, Any]) -> AssertionResult:
     text = output.get("output", "")
-    # Strip fenced JSON if present
-    stripped = text.strip()
-    if stripped.startswith("```json") and stripped.endswith("```"):
-        # Extract content between fences
-        lines = stripped.splitlines()
-        if len(lines) >= 3:
-            stripped = "\n".join(lines[1:-1])
-        else:
-            stripped = stripped[7:-3]  # remove ```json and ```
-    stripped = stripped.strip()
+    sys.stderr.write(f"DEBUG assert_json_valid: text={repr(text)}\\n")
+    # First try direct parse
     try:
-        json.loads(stripped)
+        json.loads(text)
+        sys.stderr.write("DEBUG assert_json_valid: direct parse succeeded\\n")
         return True, "", None
-    except json.JSONDecodeError as e:
-        return False, f"Output is not valid JSON: {e}", None
+    except json.JSONDecodeError:
+        sys.stderr.write("DEBUG assert_json_valid: direct parse failed\\n")
+        pass
+    # If direct parse fails, try to strip fenced JSON markers
+    stripped = text.strip()
+    sys.stderr.write(f"DEBUG assert_json_valid: stripped={repr(stripped)}\\n")
+    if stripped.startswith("```json") and stripped.endswith("```"):
+        sys.stderr.write("DEBUG assert_json_valid: has fenced markers\\n")
+        # Remove the fences
+        stripped = stripped[7:-3].strip()
+        sys.stderr.write(f"DEBUG assert_json_valid: after fence strip={repr(stripped)}\\n")
+        try:
+            json.loads(stripped)
+            sys.stderr.write("DEBUG assert_json_valid: fenced parse succeeded\\n")
+            return True, "", None
+        except json.JSONDecodeError as e:
+            sys.stderr.write(f"DEBUG assert_json_valid: fenced parse failed: {e}\\n")
+            return False, f"Output is not valid JSON: {e}", None
+    else:
+        sys.stderr.write("DEBUG assert_json_valid: no fenced markers\\n")
+        return False, f"Output is not valid JSON: No JSON found", None
 
 def assert_json_field_equals(output: Dict[str, Any], config: Dict[str, Any]) -> AssertionResult:
     text = output.get("output", "")

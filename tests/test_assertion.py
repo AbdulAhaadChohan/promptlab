@@ -42,7 +42,16 @@ class TestAssertionEngine(unittest.TestCase):
     def test_equals(self):
         passed, msg, val = assert_equals(self.base_output, {"value": "Hello world"})
         self.assertTrue(passed)
+        # normalize only strips and collapses whitespace, does not change case
         passed, msg, val = assert_equals(self.base_output, {"value": "hello world", "normalize": True})
+        self.assertFalse(passed)  # case-sensitive
+        # Test whitespace normalization
+        passed, msg, val = assert_equals(self.base_output, {"value": "Hello   world  ", "normalize": True})
+        self.assertTrue(passed)
+        passed, msg, val = assert_equals(self.base_output, {"value": "  Hello   world  ", "normalize": True})
+        self.assertTrue(passed)
+        # Test newline becomes space
+        passed, msg, val = assert_equals(self.base_output, {"value": "Hello\nworld", "normalize": True})
         self.assertTrue(passed)
         passed, msg, val = assert_equals(self.base_output, {"value": "different"})
         self.assertFalse(passed)
@@ -60,15 +69,18 @@ class TestAssertionEngine(unittest.TestCase):
     def test_json_valid(self):
         out = {"output": '{"key": "value"}', "tokens_in": 0, "tokens_out": 0, "finish": "stop", "latency_ms": 0}
         passed, msg, val = assert_json_valid(out, {})
+        print(f"plain JSON: passed={passed}, msg={msg}")
         self.assertTrue(passed)
         out2 = {"output": "not json", "tokens_in": 0, "tokens_out": 0, "finish": "stop", "latency_ms": 0}
         passed, msg, val = assert_json_valid(out2, {})
+        print(f"not json: passed={passed}, msg={msg}")
         self.assertFalse(passed)
         self.assertIn("Output is not valid JSON", msg)
 
         # fenced JSON
-        out3 = {"output": "```json\\n{\"key\": \"value\"}\\n```", "tokens_in": 0, "tokens_out": 0, "finish": "stop", "latency_ms": 0}
+        out3 = {'output': '```json\n{\"key\": \"value\"}\n```', 'tokens_in': 0, 'tokens_out': 0, 'finish': 'stop', 'latency_ms': 0}
         passed, msg, val = assert_json_valid(out3, {})
+        print(f"fenced JSON: passed={passed}, msg={msg}")
         self.assertTrue(passed)
 
     def test_json_field_equals(self):
@@ -115,7 +127,8 @@ class TestAssertionEngine(unittest.TestCase):
             ]
         })
         self.assertFalse(passed)
-        self.assertIn("Expected substring", msg)  # from first failure? actually first failure is equals? order matters; but we just check that it fails.
+        # The failure should be from the equals assertion
+        self.assertIn("does not equal expected", msg)
 
     def test_any_of(self):
         out = {"output": "Hello", "tokens_in": 5, "tokens_out": 3, "finish": "stop", "latency_ms": 0}
@@ -141,11 +154,11 @@ class TestAssertionEngine(unittest.TestCase):
         subset = {"user": {"id": 1}, "active": True}
         passed, msg, val = assert_json_subset(out, {"subset": subset})
         self.assertTrue(passed)
-        # missing subset
+        # wrong value
         subset2 = {"user": {"id": 2}}
         passed, msg, val = assert_json_subset(out, {"subset": subset2})
         self.assertFalse(passed)
-        self.assertIn("Missing key", msg)
+        self.assertIn("Value mismatch", msg)
 
     def test_dispatch(self):
         # test that dispatch works for known types
