@@ -1,201 +1,223 @@
 # promptlab Implementation Plan
 
-## 1. Architectural Decisions Overview
+## Architecture Overview
 
-Based on the SPEC.md, the following key architectural decisions have been made:
+Based on the constitution and specification, promptlab will be implemented as a command-line tool with the following core components:
 
-### 1.1 Kuzey-Only Model Invocation Principle
-The system will never import or reimplement the target model, treating it as a black-box executable with a defined CLI contract.
+### 1. Core Components
+- **CLI Parser**: Handles command-line arguments for `run`, `compare`, and `doctor` commands
+- **Test Runner**: Executes test suites against model invocations
+- **Assertion Engine**: Implements and evaluates all assertion types (core, resource, composite)
+- **Flaky Detector**: Distinguishes pass/fail/flaky outcomes across multiple runs
+- **Comparator**: Analyzes two reports to detect regressions, improvements, and changes
+- **Doctor**: Validates environment and installation integrity
+- **Reporter**: Generates machine-readable JSON reports and human-readable summaries
 
-### 1.2 Subprocess Execution with Strict Safeguards
-All model calls execute via subprocess with a 30-second timeout, exiting with code 3 on failure.
+### 2. Data Flow
+```
+Suite File → [CLI Parser] → [Test Runner] 
+                                → [Model Invoker (subprocess)] 
+                                → [Assertion Engine] 
+                                → [Flaky Detector] 
+                                → [Reporter (JSON & Human-readable)]
+                               ↑
+                   [Comparator] ← [Reporter] (for compare command)
+                               ↑
+                   [Doctor] ← [Environment Validation]
+```
 
-### 1.3 Pure Function Assertion Model
-Assertions are pure functions taking (model_output, assertion_config) and returning (passed, failure_message, measured_value).
+## Implementation Approach
 
-### 1.4 Strict Flaky Policy (Unanimity Required)
-A case passes only if all runs pass (pass_rate == 1.0); fails if all runs fail (pass_rate == 0.0); flaky otherwise.
+### Phase 1: Foundation (Weeks 1-2)
+1. **CLI Infrastructure**
+   - Implement argument parsing for all three commands
+   - Establish exit code contract and precedence rules
+   - Create basic project structure and entry point
 
-### 1.5 Fenced-JSON Validation
-Fenced JSON (```json ... ```) is considered valid for assertion purposes.
+2. **Subprocess Model Invoker**
+   - Implement exact argument structure execution
+   - Add 30-second timeout safeguard
+   - Handle exit codes, exceptions, and timeouts
+   - Route stderr/stdout appropriately
 
-### 1.6 Regression Definition
-Any decrease in pass rate constitutes a regression, regardless of absolute pass/fail labels.
+3. **Basic Suite Parser**
+   - Parse and validate suite JSON structure
+   - Handle edge cases (empty suites, empty assertions)
+   - Validate input file paths relative to suite location
 
-### 1.6 Cost Accounting Approach
-Metrics use sums across all runs rather than averages to make cost-regressions visible.
+### Phase 2: Core Functionality (Weeks 3-4)
+1. **Assertion Engine**
+   - Implement pure function model for all assertion types
+   - Create assertion registry for extensibility
+   - Build core assertions: contains, not_contains, equals, matches, json_valid, json_field_equals
+   - Implement resource assertions: max_tokens, finish_is
+   - Develop composite assertions: all_of, any_of, json_subset
 
-### 1.7 Composability and Extensibility Engine
-Assertion engine built around pure functions, registry pattern, composite assertions, and recursive evaluation.
+2. **Test Runner & Flaky Detector**
+   - Execute cases N times (from --runs or suite runs)
+   - Apply flaky policy (unanimity required)
+   - Calculate pass rates and status determinations
+   - Aggregate token and timing metrics
 
-## 2. Component Implementation Plan
+### Phase 3: Reporting & Comparison (Weeks 5-6)
+1. **JSON Reporter**
+   - Generate exact report schema as specified
+   - Compute prompt_hash (first 12 chars of SHA-256)
+   - Aggregate totals across cases and runs
+   - Build per-case and per-assertion statistics
 
-### 2.1 Test Runner
-- Execute test suites by iterating through cases
-- For each case, execute model invocations per the runs count
-- Evaluate assertions against each model output
-- Track pass/fail/flaky status per case
-- Aggregate results across all cases
+2. **Human-Readable Output**
+   - Implement concise summary format
+   - Route output according to stream routing rules
+   - Format worst cases display
 
-### 2.2 Assertion Engine
-- Implement core assertion types: contains, not_contains, equals, matches, json_valid, json_field_equals
-- Implement resource assertions: max_tokens, finish_is
-- Implement composite assertions: all_of, any_of, json_subset
-- Build registry for assertion types
-- Implement pure function interface for all assertions
-- Support nesting of composite assertions to any depth
-- Ensure deterministic, side-effect-free evaluation
+3. **Comparator**
+   - Implement comparison JSON schema
+   - Calculate pass_rate_change and percentage deltas
+   - Classify cases as regressions, improvements, unchanged
+   - Validate comparison prerequisites (same suite, settings, runs)
 
-### 2.3 Flaky Detector
-- Calculate pass rate for each case across runs
-- Classify cases as pass (1.0), fail (0.0), or flaky (0.0 < rate < 1.0)
-- Track assertion-level pass/fail counts
+### Phase 4: Polish & Verification (Weeks 7-8)
+1. **Doctor Command**
+   - Environment validation (Python version, model binary)
+   - Suite discoverability check
+   - Assertion type registry verification
+   - Exit with code 0 if all checks pass
 
-### 2.4 Comparator
-- Load two reports
-- Compare pass rates case-by-case
-- Identify regressions (decreased pass rate), improvements (increased pass rate), unchanged
-- Calculate percentage changes in aggregate metrics (tokens_in, tokens_out, wall_ms)
+2. **Error Handling & Edge Cases**
+   - Invalid runs value (<1) validation
+   - Duplicate case ID detection
+   - Unknown assertion type rejection
+   - Invalid regex preprocessing (for matches assertion)
+   - Missing/unreadable file handling (Exit Code 4)
 
-### 2.5 Doctor
-- Validate environment: Python availability, required packages
-- Check installation integrity
-- Verify subprocess model invocation works
-- Return appropriate exit codes
+3. **Verification Suite**
+   - Comprehensive unit test coverage
+   - Fresh clone validation script
+   - Spec compliance verification
 
-### 2.6 Reporter
-- Generate JSON report with exact schema specified
-- Calculate SHA-256 hash of prompt file (first 12 hex chars)
-- Aggregate metrics across cases and runs
-- Format human-readable summary
-- Implement stream routing rules (stdout/stderr based on --out flag)
+## Technical Details
 
-## 3. Technical Implementation Details
+### Language & Dependencies
+- **Language**: Python 3.10+ (standard library only)
+- **No Third-Party Packages**: Pure stdlib implementation
+- **Subprocess Usage**: `subprocess.run()` with timeout, not `Popen` or `call`
 
-### 3.1 Language Choice
-Python 3.8+ selected for:
-- Excellent subprocess handling
-- Built-in JSON support
-- Regular expression library (re)
-- Cross-platform compatibility
-- Rich ecosystem for testing
+### Key Implementation Decisions
+1. **Assertion Evaluation**
+   - Pure functions returning `(bool, str, Any)`
+   - Registry pattern for assertion type lookup
+   - Recursive evaluation for composite assertions
+   - No short-circuiting; all assertions evaluated per case
 
-### 3.2 Project Structure
-- `/src/main.py`: CLI entry point with command dispatch
-- `/src/runner.py`: Test runner implementation
-- `/src/assertions.py`: Assertion engine and types
-- `/src/compare.py`: Report comparison logic
-- `/src/doctor.py`: Environment validation
-- `/src/reporter.py`: JSON and human-readable report generation
-- `/suites/`: Directory for test suite JSON files
-- `/prompts/`: Directory for prompt text files
-- `history/prompts/`: Prompt History Records (automatically generated)
-- `history/adr/`: Architecture Decision Records (to be created)
+2. **Flaky Handling**
+   - Pass/fail/flaky determined by run pass rate
+   - Per-assertion pass/fail counts tracked
+   - First failure captured for reporting (with run index)
 
-### 3.3 Key Implementation Notes
-- **Subprocess Timeout**: Use threading.Timer or similar for cross-platform 30-second timeout
-- **JSON Parsing**: Strip fenced JSON markers (```json\n and \n```) before parsing
-- **Token Calculation**: Implement tokens = ceil(len(text) / 4) as specified
-- **Error Handling**: Distinguish between bad usage (exit code 1) and model invocation failure (exit code 3)
-- **Determinism**: At temperature 0.0, ensure byte-identical reports except timing fields
-- **Stream Routing**: Carefully manage stdout/stderr based on --out and --report flags per specification
+3. **Reporting**
+   - Totals use sums across runs (not averages)
+   - Timing fields isolated: `wall_ms` (totals) and `tokens_out_avg` (cases)
+   - Deterministic at temperature 0.0 (except timing fields)
 
-## 4. Dependencies and External Interfaces
+4. **Comparison**
+   - Baseline vs candidate pass rate deltas
+   - Percentage changes for tokens_in, tokens_out, wall_ms
+   - Clear classification of case outcomes
+   - Warnings for mismatched prompt_hash or model settings
 
-### 4.1 Model Interface
-- Expects model binary at configurable path
-- Accepts arguments: --prompt <file> --input <string> --temperature <float> --max-tokens <int>
-- Returns JSON object on stdout: {"output": "...", "tokens_in": N, "tokens_out": M, "finish": "...", "latency_ms": T}
-- Exits with code 0 on success, non-zero on failure
+## Acceptance Criteria
 
-### 4.2 File Format Dependencies
-- Suite files: JSON format as specified
-- Prompt files: Plain text, UTF-8 encoding
-- Input files (when referenced): Plain text, UTF-8 encoding, trimmed trailing newlines
-- Report files: JSON format as specified
+### Definition of Done
+- [ ] SPEC.md present in first commit with zero implementation code
+- [ ] All EXIT CODE contracts honored with precedence rules
+- [ ] Deterministic output at temperature 0.0 (byte-identical except timing)
+- [ ] Flaky handling implements strict unanimity policy
+- [ ] All eight base assertions + three composite assertions implemented
+- [ ] Stream routing prevents stdout corruption
+- [ ] Subprocess invocation uses exact argument structure
+- [ ] 30-second timeout on model invocations
+- [ ] Human-readable and JSON reports match exact schemas
+- [ ] Comparator implements specified JSON output and rules
+- [ ] Doctor command validates environment and installation
+- [ ] Unit test suite covers all core functionality
+- [ ] Fresh clone verification passes in under 5 minutes
+- [ ] Required context artifacts present (CLAUDE.md, PROMPTS.md, etc.)
 
-## 5. Risk Assessment and Mitigation
+### Starter Verification (Must Pass in <5 Minutes)
+1. `promptlab doctor` executes successfully (exit code 0)
+2. `promptlab run --suite suites/smoke.json` completes without error
+3. `python -m unittest` passes from fresh clone
+- [ ] All tests must avoid direct dependencies on stubmodel.py
 
-### 5.1 Model Binary Compatibility Risk
-- Mitigation: Define clear CLI contract in SPEC.md; validate during doctor check
-- Impact: High - core to subprocess-only principle
+## Risk Mitigation
 
-### 5.2 Performance Risk from Subprocess Overhead
-- Mitigation: Consider result caching as stretch goal; batch executions where safe
-- Impact: Medium - affects execution speed but not correctness
+### Technical Risks
+1. **Determinism Breach**
+   - Mitigation: Isolate timing-sensitive code; audit all code paths for non-determinism
+   - Validation: Run same suite twice at temp 0.0; diff output (should differ only in timing fields)
 
-### 5.3 Correctness Risk in Assertion Engine
-- Mitigation: Comprehensive unit testing; property-based testing for edge cases
-- Impact: High - core functionality
+2. **Subprocess Hangs**
+   - Mitigation: Strict 30-second timeout; proper exception handling
+   - Validation: Test with hanging model binary; verify exit code 3
 
-### 5.4 Security Risk from Arbitrary Model Execution
-- Mitigation: Document that users must trust model binaries; no sandboxing implemented
-- Impact: Low - trust boundary is explicit
+3. **Stream Routing Errors**
+   - Mitigation: Comprehensive flag combination testing
+   - Validation: All permutations of --out and --report flags
 
-## 6. Implementation Milestones
+4. **Assertion Composition Complexity**
+   - Mitigation: Pure function base; extensive unit tests for nesting
+   - Validation: Deeply nested all_of/any_of/json_subset combinations
 
-### Milestone 1: Core Infrastructure
-- CLI framework with command parsing
-- Subprocess model invocation with timeout
-- Basic test runner execution
-- Exit code handling
+### Schedule Risks
+1. **Scope Creep**
+   - Mitigation: Strict adherence to SPEC.md; treat as immutable during implementation
+   - Validation: Regular spec compliance checks
 
-### Milestone 2: Assertion Engine
-- Core assertion types implementation
-- Registry pattern
-- Pure function interface
-- Basic assertion evaluation
+2. **Underestimating Edge Cases**
+   - Mitigation: Exhaustive validation testing; property-based approaches where applicable
+   - Validation: Fuzzing for malformed inputs; boundary value testing
 
-### Milestone 3: Composite Assertions
-- all_of, any_of, json_subset implementation
-- Nesting support
-- Recursive evaluation
-- Reporting integration
+## Dependencies & Interfaces
 
-### Milestone 4: Flaky Detection and Reporting
-- Pass/fail/flaky classification
-- Per-assertion statistics
-- JSON report generation
-- Human-readable summary
+### Internal Interfaces
+- CLI Parser ↔ Test Runner (configuration)
+- Test Runner ↔ Model Invoker (execution requests)
+- Test Runner ↔ Assertion Engine (evaluation requests)
+- Assertion Engine ↔ Flaky Detector (run results)
+- Test Runner ↔ Reporter (final results)
+- Reporter ↔ Comparator (for compare command)
 
-### Milestone 5: Comparison and Doctor
-- Report comparison logic
-- Environment validation
-- Final polish and testing
+### External Interfaces
+- Model Binary: Subprocess execution with defined CLI contract
+- File System: Suite files, prompt files, input files (read-only)
+- Standard Output/Error: JSON reports, human-readable summaries, error messages
+- User Input: Command-line arguments and flags
 
-## 7. Open Questions and Decisions Needed
+## Success Metrics
 
-### 7.1 Model Binary Location
-- How should users specify the model binary path?
-  - Option A: Environment variable (PROMPTLAB_MODEL_BINARY)
-  - Option B: Command-line flag (--model-binary)
-  - Option C: Config file (~/.promptlab/config)
-- Decision needed: [To be determined]
+### Functional Correctness
+- 100% compliance with SPEC.md behaviors and contracts
+- All exit codes used correctly with proper precedence
+- Deterministic output verified at temperature 0.0
+- Flaky classification matches unanimity policy
+- All assertion types behave as specified
+- Composite assertions evaluate correctly with nesting
+- Reports match exact JSON schemas
+- Human-readable output matches specified format
+- Comparator output follows defined rules and classifications
 
-### 7.2 Temporary File Handling
-- Should we create temporary files for complex inputs?
-  - Currently, inputs are passed directly via --input argument
-  - For very large inputs, might need file-based approach
-- Decision: Stick to --input argument as specified; document limitations
+### Quality Attributes
+- No tracebacks reach user under any error condition
+- Error messages are descriptive and actionable
+- Performance acceptable for expected use cases
+- Memory usage remains bounded
+- Implementation follows constitution principles
+- Code is maintainable and extensible
 
-### 7.3 Progress Reporting
-- Should we show progress during execution?
-  - Not specified in requirements
-  - Could add verbose flag as enhancement
-- Decision: Not required for MVP; consider as stretch goal
-
-## 8. Acceptance Criteria
-
-### 8.1 Minimum Viable Product
-- `promptlab doctor` validates environment
-- `promptlab run` executes suites and produces correct JSON reports
-- `promptlab compare` detects changes between reports
-- All exit codes work as specified
-- Assertion engine supports all required types
-- Flaky policy implemented correctly
-
-### 8.2 Quality Requirements
-- Code follows Python best practices
-- Comprehensive unit test coverage
-- Deterministic output at temperature 0.0 (except timing)
-- Clear error messages matching specification
+### Process Compliance
+- Spec-first development maintained throughout
+- Architecture decisions documented in ADRs
+- Context artifacts created and maintained
+- Unit test coverage meets or exceeds 80%
+- All deliverables present in final submission

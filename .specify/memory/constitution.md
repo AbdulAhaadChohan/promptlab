@@ -1,55 +1,94 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# promptlab Project Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### 1. Spec-Driven Development (SDD)
+- **Primacy of Specification**: The SPEC.md file is the single source of truth for all behavioral contracts
+- **Spec-First Commitment**: First repository commit must contain SPEC.md with zero implementation code
+- **Evolution Protocol**: When design changes, update SPEC.md before modifying any code
+- **Verification**: Compliance checked via `git log --reverse --stat` to ensure spec precedes implementation
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### 2. Subprocess-Only Model Interaction
+- **Black-Box Principle**: Never import, copy, or reimplement the target model (stubmodel.py)
+- **Exact CLI Contract**: All model calls execute via subprocess with precise argument structure:
+  `python <model_binary> --prompt <prompt_file> --input <resolved_input> --temperature <temp> --max-tokens <max_tokens>`
+- **Compatibility Guarantee**: Works with any model binary adhering to the same interface
+- **Judge's Swapped-Model Test**: Enables evaluation with different model binaries during assessment
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### 3. Deterministic & Reliable Measurement
+- **Byte-Identical Output**: At temperature 0.0, repeated runs produce identical reports (excluding timing fields)
+- **Timing Field Isolation**: `wall_ms` and `tokens_out_avg` are explicitly allowed to vary
+- **Clean Diffs**: Isolating timing ensures meaningful comparison of prompt changes
+- **Execution Safeguards**: 30-second timeout per subprocess prevents hanging processes
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### 4. Comprehensive Flaky Handling
+- **Unanimity Required**: Case status determined by pass rate across runs:
+  - `pass`: pass_rate == 1.0 (all runs passed)
+  - `fail`: pass_rate == 0.0 (all runs failed)
+  - `flaky`: 0.0 < pass_rate < 1.0 (mixed results)
+- **Anti-Degradation**: Prevents silent accuracy erosion; a case passing 7/10 runs is NOT considered passing
+- **Per-Asset Accounting**: Tracks passes/failures for each assertion across all runs
+- **Actionable Failures**: Captures expectation, actual output (truncated), and measured values
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### 5. Exact Specification Compliance
+- **Precise Schemas**: Suite files, reports, and comparison outputs must match defined JSON structures exactly
+- **Strict Validation**: Malformed inputs produce Exit Code 1 with descriptive messages (never tracebacks)
+- **Exit Code Contract**:
+  - 0: Success (all cases passed / all checks passed / comparison completed)
+  - 1: Bad usage/malformed input (checked before execution)
+  - 4: Unreadable files (checked during file resolution)
+  - 3: Model invocation failures (timeout, exceptions, non-zero exit)
+  - 2: Test cases failed/flaky (evaluation result, not error)
+- **Precedence Hierarchy**: 1 → 4 → 3 → 2 → 0 for simultaneous errors
 
-### [PRINCIPLE_6_NAME]
+### 6. Context Engineering Excellence
+- **Required Artifacts**: All deliverables must include:
+  - `CLAUDE.md`: Context file driving Claude Code development (graded)
+  - `PROMPTS.md`: Five most important development prompts with analysis
+  - `USAGE.md`: LLM-agent-focused usage guide with exit code guidance
+  - `JOURNAL.md`: Responses to five mandatory reflective questions
+- **Transparency**: Artifacts ensure visibility into development process and decision-making
 
+### 7. Measurement Integrity
+- **Source Constraint**: All measurements must come exclusively from promptlab reports
+- **Comparison Validity**: Requires identical suite, model settings, and run counts
+- **Accuracy Metric**: Gain measured as delta in pass_rate averaged across cases
+- **Cost Measurement**: Percentage change in total tokens_in and tokens_out
+- **Honest Assessment**: Failed experiment documentation (one unhelpful change) is required and graded
 
-[PRINCIPLE__DESCRIPTION]
+### 8. Assertion Engine Excellence
+- **Pure Function Model**: Assertions are side-effect-free functions returning (passed, failure_message, measured_value)
+- **Extensibility**: New assertion types added via registry without modifying core logic
+- **Composition Support**: `all_of` (AND), `any_of` (OR), `json_subset` (structural equality) with any-depth nesting
+- **Deterministic Evaluation**: Consistent results regardless of assertion order or nesting depth
+- **Rich Reporting**: Per-assertion counts work recursively; failures detail specific child assertions
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Code Standards Derived From This Constitution
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### Quality
+- Deterministic output at temperature 0.0 (except timing fields)
+- No crash reaches user; all errors produce one-line messages and correct exit codes
+- Strict validation prevents tracebacks from reaching users
+- Exit codes enable reliable automation and CI/CD integration
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+### Testing
+- Unit test suite covers assertion evaluation, suite parsing, flaky classification, compare logic
+- `python -m unittest` must pass from fresh clone
+- Tests avoid direct dependencies on stubmodel.py (use mocks or subprocess only)
+- Fresh clone verification: `doctor` → `run --suite suites/smoke.json` → `python -m unittest` in <5 minutes
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### Performance
+- Total-cost accounting (sums across runs) makes cost-regressions visible
+- 30-second timeout balances complexity detection with hang prevention
+- Stream routing prevents stdout corruption while enabling machine/human-readable output
 
-## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
+### Security
+- No network access; everything is local
+- No hardcoded secrets or tokens; use environment variables and documentation
+- Subprocess isolation prevents supply chain attacks via model binary
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
-
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+### Architecture
+- Composition over inheritance: Assertion engine built on pure function registry
+- Separation of concerns: Test runner, assertion engine, flaky detector, comparator, doctor, reporter
+- Extensibility points: New assertion types via interface implementation and registration
+- Reporting integration: Failures in nested assertions bubble up with contextual details
